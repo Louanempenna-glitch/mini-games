@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Whack a Mole</title>
+
+  <style>
+    body{
+      margin:0;
+      background:#1d1d1d;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+      font-family:Arial,sans-serif;
+    }
+
+    canvas{
+      background:linear-gradient(#4caf50,#2e7d32);
+      border:4px solid white;
+      border-radius:20px;
+      cursor:pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+<canvas id="game" width="420" height="620"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let score = 0;
+let timeLeft = 30;
+let gameOver = false;
+let startTime = Date.now();
+let scoreSaved = false;
+
+const holes = [
+  {x:90,y:180},
+  {x:210,y:180},
+  {x:330,y:180},
+
+  {x:90,y:340},
+  {x:210,y:340},
+  {x:330,y:340},
+
+  {x:90,y:500},
+  {x:210,y:500},
+  {x:330,y:500},
+];
+
+let mole = {
+  holeIndex: 0,
+  visible: false,
+  timer: 0
+};
+
+function randomMole(){
+
+  mole.holeIndex = Math.floor(Math.random()*holes.length);
+
+  mole.visible = true;
+
+  mole.timer = 40 - Math.min(score,25);
+
+  if(mole.timer < 12){
+    mole.timer = 12;
+  }
+}
+
+function drawBoard(){
+
+  ctx.fillStyle = "#2e7d32";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  holes.forEach(hole=>{
+
+    ctx.beginPath();
+    ctx.ellipse(hole.x,hole.y,45,28,0,0,Math.PI*2);
+
+    ctx.fillStyle = "#3e2723";
+    ctx.fill();
+  });
+}
+
+function drawMole(){
+
+  if(!mole.visible) return;
+
+  const hole = holes[mole.holeIndex];
+
+  ctx.font = "65px Arial";
+  ctx.fillText("🐹",hole.x-32,hole.y+12);
+}
+
+function drawScore(){
+
+  ctx.fillStyle = "white";
+
+  ctx.font = "bold 28px Arial";
+  ctx.fillText("Score : "+score,20,40);
+
+  ctx.font = "bold 24px Arial";
+  ctx.fillText("Temps : "+Math.ceil(timeLeft),20,75);
+}
+
+function drawGameOver(){
+
+  ctx.fillStyle = "rgba(0,0,0,0.7)";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  ctx.fillStyle = "white";
+
+  ctx.font = "bold 46px Arial";
+  ctx.fillText("FIN DU JEU",70,260);
+
+  ctx.font = "26px Arial";
+  ctx.fillText("Score : "+score,145,320);
+
+  ctx.font = "22px Arial";
+  ctx.fillText("Clique pour rejouer",100,380);
+}
+
+function gameLoop(){
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  drawBoard();
+
+  if(!gameOver){
+
+    timeLeft -= 1/60;
+
+    if(timeLeft <= 0){
+      gameOver = true;
+      saveScore();
+    }
+
+    if(!mole.visible){
+      if(Math.random() < 0.03){
+        randomMole();
+      }
+    }else{
+
+      mole.timer--;
+
+      if(mole.timer <= 0){
+        mole.visible = false;
+      }
+    }
+  }
+
+  drawMole();
+
+  drawScore();
+
+  if(gameOver){
+    drawGameOver();
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+canvas.addEventListener("click",function(e){
+
+  if(gameOver){
+
+    score = 0;
+    timeLeft = 30;
+    gameOver = false;
+    mole.visible = false;
+
+    return;
+  }
+
+  if(!mole.visible) return;
+
+  const rect = canvas.getBoundingClientRect();
+
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  const hole = holes[mole.holeIndex];
+
+  const dx = mouseX - hole.x;
+  const dy = mouseY - hole.y;
+
+  const distance = Math.sqrt(dx*dx + dy*dy);
+
+  if(distance < 45){
+
+    score++;
+
+    mole.visible = false;
+  }
+});
+function saveScore() {
+  if (scoreSaved) return;
+  scoreSaved = true;
+
+  let player = localStorage.getItem("currentPlayer");
+  if (!player) return;
+
+  let players = JSON.parse(localStorage.getItem("players")) || {};
+  if (!players[player]) return;
+
+  let playTime = (Date.now() - startTime) / 1000;
+  players[player].timePlayed += playTime;
+if (score > players[player].moleScore) {
+  players[player].moleScore = score;
+}
+  localStorage.setItem("players", JSON.stringify(players));
+}
+gameLoop();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catch Coin</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      background: linear-gradient(#222, #444);
+      border: 4px solid white;
+      border-radius: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+<canvas id="game" width="400" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let basket = {
+  x: 150,
+  y: 540,
+  width: 100,
+  height: 25
+};
+
+let objects = [];
+let score = 0;
+let startTime = Date.now();
+let gameOver = false;
+let timeLeft = 30;
+
+function spawnObject() {
+  objects.push({
+    x: Math.random() * 360,
+    y: -30,
+    speed: 3 + Math.random() * 3,
+    type: Math.random() < 0.8 ? "coin" : "bomb"
+  });
+}
+
+function drawBasket() {
+  ctx.font = "42px Arial";
+  ctx.fillText("🧺", basket.x + 25, basket.y + 30);
+}
+
+function drawObjects() {
+  objects.forEach(function(obj) {
+    ctx.font = "32px Arial";
+    ctx.fillText(obj.type === "coin" ? "🪙" : "💣", obj.x, obj.y);
+  });
+}
+
+function updateObjects() {
+  for (let i = objects.length - 1; i >= 0; i--) {
+    let obj = objects[i];
+    obj.y += obj.speed;
+
+    let caught =
+      obj.y > basket.y &&
+      obj.x > basket.x &&
+      obj.x < basket.x + basket.width;
+
+    if (caught) {
+      if (obj.type === "coin") {
+        score++;
+      } else {
+        gameOver = true;
+      }
+
+      objects.splice(i, 1);
+    }
+
+    if (obj.y > canvas.height) {
+      objects.splice(i, 1);
+    }
+  }
+}
+
+function drawScore() {
+  ctx.fillStyle = "white";
+  ctx.font = "bold 28px Arial";
+  ctx.fillText("Score : " + score, 20, 40);
+
+  ctx.font = "bold 24px Arial";
+  ctx.fillText("Temps : " + Math.ceil(timeLeft), 20, 75);
+}
+
+function drawGameOver() {
+  ctx.fillStyle = "rgba(0,0,0,0.7)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "white";
+  ctx.font = "bold 46px Arial";
+  ctx.fillText("GAME OVER", 55, 260);
+
+  ctx.font = "24px Arial";
+  ctx.fillText("Score final : " + score, 110, 300);
+  ctx.fillText("Clique pour rejouer", 85, 340);
+}
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (!gameOver) {
+    timeLeft -= 1 / 60;
+
+    if (timeLeft <= 0) {
+    gameOver = true;
+    saveScore();
+}
+
+    if (Math.random() < 0.03) {
+      spawnObject();
+    }
+
+    updateObjects();
+  }
+
+  drawBasket();
+  drawObjects();
+  drawScore();
+
+  if (gameOver) {
+    drawGameOver();
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+canvas.addEventListener("mousemove", function(e) {
+  const rect = canvas.getBoundingClientRect();
+  basket.x = e.clientX - rect.left - basket.width / 2;
+
+  if (basket.x < 0) basket.x = 0;
+  if (basket.x + basket.width > canvas.width) {
+    basket.x = canvas.width - basket.width;
+  }
+});
+
+canvas.addEventListener("click", function() {
+  if (gameOver) {
+    score = 0;
+    objects = [];
+    gameOver = false;
+    timeLeft = 30;
+  }
+});
+function saveScore() {
+
+  let player = localStorage.getItem("currentPlayer");
+
+  if (!player) return;
+
+  let players = JSON.parse(localStorage.getItem("players")) || {};
+
+  if (!players[player]) return;
+
+  let playTime = (Date.now() - startTime) / 1000;
+
+  if (score > players[player].catchScore) {
+    players[player].catchScore = score;
+  }
+
+  players[player].timePlayed += playTime;
+
+  localStorage.setItem("players", JSON.stringify(players));
+}
+gameLoop();
+</script>
+
+</body>
+</html>

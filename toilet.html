@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Toilet Rush</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      background: linear-gradient(#2c3e50, #34495e);
+      border: 4px solid white;
+      border-radius: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+<canvas id="game" width="420" height="620"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let player = {
+  x: 190,
+  y: 540,
+  size: 36,
+  speed: 5
+};
+
+let toilet = {
+  x: 180,
+  y: 40,
+  size: 55
+};
+
+let obstacles = [];
+let keys = {};
+let urgency = 0;
+let level = 1;
+let gameOver = false;
+let win = false;
+let startTime = Date.now();
+let scoreSaved = false;
+
+function resetGame() {
+  player.x = 190;
+  player.y = 540;
+  urgency = 0;
+  obstacles = [];
+  gameOver = false;
+  win = false;
+
+  for (let i = 0; i < 8 + level; i++) {
+    obstacles.push({
+      x: Math.random() * 360,
+      y: 120 + Math.random() * 360,
+      size: 35,
+      emoji: Math.random() < 0.5 ? "🪑" : "🍌"
+    });
+  }
+}
+
+function drawBackground() {
+  ctx.fillStyle = "#263645";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "#3b5268";
+  for (let y = 100; y < canvas.height; y += 80) {
+    ctx.fillRect(0, y, canvas.width, 3);
+  }
+}
+
+function drawPlayer() {
+  ctx.font = "38px Arial";
+  ctx.fillText("🏃", player.x, player.y + player.size);
+}
+
+function drawToilet() {
+  ctx.font = "55px Arial";
+  ctx.fillText("🚽", toilet.x, toilet.y + toilet.size);
+}
+
+function drawObstacles() {
+  obstacles.forEach(function(obstacle) {
+    ctx.font = "34px Arial";
+    ctx.fillText(obstacle.emoji, obstacle.x, obstacle.y + obstacle.size);
+  });
+}
+
+function drawUI() {
+  ctx.fillStyle = "white";
+  ctx.font = "bold 24px Arial";
+  ctx.fillText("Niveau : " + level, 20, 35);
+
+  ctx.fillText("Urgence", 20, 70);
+
+  ctx.strokeStyle = "white";
+  ctx.strokeRect(120, 50, 250, 22);
+
+  ctx.fillStyle = urgency > 70 ? "red" : "cyan";
+  ctx.fillRect(120, 50, urgency * 2.5, 22);
+}
+
+function movePlayer() {
+  if (keys["ArrowLeft"] || keys["a"]) player.x -= player.speed;
+  if (keys["ArrowRight"] || keys["d"]) player.x += player.speed;
+  if (keys["ArrowUp"] || keys["w"]) player.y -= player.speed;
+  if (keys["ArrowDown"] || keys["s"]) player.y += player.speed;
+
+  if (player.x < 0) player.x = 0;
+  if (player.x > canvas.width - player.size) player.x = canvas.width - player.size;
+  if (player.y < 90) player.y = 90;
+  if (player.y > canvas.height - player.size) player.y = canvas.height - player.size;
+}
+
+function checkCollisions() {
+  for (let obstacle of obstacles) {
+    let hit =
+      player.x < obstacle.x + obstacle.size &&
+      player.x + player.size > obstacle.x &&
+      player.y < obstacle.y + obstacle.size &&
+      player.y + player.size > obstacle.y;
+
+    if (hit) {
+      urgency += 8;
+      player.y += 35;
+
+      if (player.y > canvas.height - player.size) {
+        player.y = canvas.height - player.size;
+      }
+    }
+  }
+
+  let reachedToilet =
+    player.x < toilet.x + toilet.size &&
+    player.x + player.size > toilet.x &&
+    player.y < toilet.y + toilet.size &&
+    player.y + player.size > toilet.y;
+
+  if (reachedToilet) {
+    win = true;
+    gameOver = true;
+  }
+
+  if (urgency >= 100) {
+    gameOver = true;
+    saveScore();
+  }
+}
+
+function drawEndScreen() {
+  ctx.fillStyle = "rgba(0,0,0,0.75)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "white";
+
+  if (win) {
+    ctx.font = "bold 42px Arial";
+    ctx.fillText("SAUVÉ ! 🚽", 95, 260);
+
+    ctx.font = "24px Arial";
+    ctx.fillText("Clique pour niveau suivant", 65, 325);
+  } else {
+    ctx.font = "bold 38px Arial";
+    ctx.fillText("TROP TARD 😂", 70, 260);
+
+    ctx.font = "24px Arial";
+    ctx.fillText("Clique pour recommencer", 70, 325);
+  }
+}
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  drawBackground();
+
+  if (!gameOver) {
+    urgency += 0.08;
+    movePlayer();
+    checkCollisions();
+  }
+
+  drawToilet();
+  drawObstacles();
+  drawPlayer();
+  drawUI();
+
+  if (gameOver) {
+    drawEndScreen();
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+document.addEventListener("keydown", function(e) {
+  keys[e.key] = true;
+});
+
+document.addEventListener("keyup", function(e) {
+  keys[e.key] = false;
+});
+
+canvas.addEventListener("click", function() {
+  if (gameOver) {
+    if (win) {
+      level++;
+    } else {
+      level = 1;
+    }
+
+    resetGame();
+  }
+});
+
+resetGame();
+function saveScore() {
+  if (scoreSaved) return;
+  scoreSaved = true;
+
+  let player = localStorage.getItem("currentPlayer");
+  if (!player) return;
+
+  let players = JSON.parse(localStorage.getItem("players")) || {};
+  if (!players[player]) return;
+
+  let playTime = (Date.now() - startTime) / 1000;
+  players[player].timePlayed += playTime;
+
+  localStorage.setItem("players", JSON.stringify(players));
+}
+gameLoop();
+</script>
+
+</body>
+</html>

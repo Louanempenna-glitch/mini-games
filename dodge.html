@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dodge Car</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+    }
+
+    canvas {
+      background: #333;
+      border: 4px solid white;
+      border-radius: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+<canvas id="game" width="400" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let car = {
+  x: 175,
+  y: 500,
+  width: 50,
+  height: 80,
+  speed: 7
+};
+
+let obstacles = [];
+let score = 0;
+let gameOver = false;
+let roadLineY = 0;
+let startTime = Date.now();
+let scoreSaved = false;
+
+function spawnObstacle() {
+  obstacles.push({
+    x: Math.random() * 330 + 20,
+    y: -80,
+    width: 50,
+    height: 80,
+    speed: 4 + score * 0.02
+  });
+}
+
+function drawRoad() {
+  ctx.fillStyle = "#444";
+  ctx.fillRect(60, 0, 280, canvas.height);
+
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(60, 0);
+  ctx.lineTo(60, canvas.height);
+  ctx.moveTo(340, 0);
+  ctx.lineTo(340, canvas.height);
+  ctx.stroke();
+
+  ctx.fillStyle = "white";
+  for (let i = -40; i < canvas.height; i += 90) {
+    ctx.fillRect(195, i + roadLineY, 10, 50);
+  }
+
+  roadLineY += 5;
+  if (roadLineY > 90) roadLineY = 0;
+}
+
+function drawCar() {
+  ctx.font = "60px Arial";
+  ctx.fillText("🚗", car.x, car.y + 60);
+}
+
+function drawObstacles() {
+  obstacles.forEach(function(obstacle) {
+    ctx.font = "60px Arial";
+    ctx.fillText("🚙", obstacle.x, obstacle.y + 60);
+  });
+}
+
+function updateObstacles() {
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    let obstacle = obstacles[i];
+    obstacle.y += obstacle.speed;
+
+    let collision =
+      car.x < obstacle.x + obstacle.width &&
+      car.x + car.width > obstacle.x &&
+      car.y < obstacle.y + obstacle.height &&
+      car.y + car.height > obstacle.y;
+
+    if (collision) {
+      gameOver = true;
+      saveScore();
+    }
+
+    if (obstacle.y > canvas.height) {
+      obstacles.splice(i, 1);
+      score++;
+    }
+  }
+}
+
+function drawScore() {
+  ctx.fillStyle = "white";
+  ctx.font = "bold 26px Arial";
+  ctx.fillText("Score : " + score, 20, 40);
+}
+
+function drawGameOver() {
+  ctx.fillStyle = "rgba(0,0,0,0.75)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = "white";
+  ctx.font = "bold 44px Arial";
+  ctx.fillText("CRASH !", 115, 250);
+
+  ctx.font = "24px Arial";
+  ctx.fillText("Score final : " + score, 105, 305);
+  ctx.fillText("Clique pour rejouer", 85, 355);
+}
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  drawRoad();
+
+  if (!gameOver) {
+    if (Math.random() < 0.025) {
+      spawnObstacle();
+    }
+
+    updateObstacles();
+  }
+
+  drawCar();
+  drawObstacles();
+  drawScore();
+
+  if (gameOver) {
+    drawGameOver();
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+document.addEventListener("keydown", function(e) {
+  if (e.key === "ArrowLeft") {
+    car.x -= car.speed;
+  }
+
+  if (e.key === "ArrowRight") {
+    car.x += car.speed;
+  }
+
+  if (car.x < 70) car.x = 70;
+  if (car.x > 290) car.x = 290;
+});
+
+canvas.addEventListener("mousemove", function(e) {
+  const rect = canvas.getBoundingClientRect();
+  car.x = e.clientX - rect.left - car.width / 2;
+
+  if (car.x < 70) car.x = 70;
+  if (car.x > 290) car.x = 290;
+});
+
+canvas.addEventListener("click", function() {
+  if (gameOver) {
+    car.x = 175;
+    obstacles = [];
+    score = 0;
+    gameOver = false;
+  }
+});
+function saveScore() {
+  if (scoreSaved) return;
+  scoreSaved = true;
+
+  let player = localStorage.getItem("currentPlayer");
+  if (!player) return;
+
+  let players = JSON.parse(localStorage.getItem("players")) || {};
+  if (!players[player]) return;
+
+  let playTime = (Date.now() - startTime) / 1000;
+  players[player].timePlayed += playTime;
+if (score > players[player].dodgeScore) {
+  players[player].dodgeScore = score;
+}
+  localStorage.setItem("players", JSON.stringify(players));
+}
+gameLoop();
+</script>
+
+</body>
+</html>
